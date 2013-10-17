@@ -3,4 +3,4 @@
 # database
 DATABASE_URI = "postgresql://matthieu:matthieu@localhost:5432/firewoes"
 
-GITWEB_URL = "http://git.upsilon.cc/?p=firewose.git"
+GITWEB_URL = "http://git.upsilon.cc/?p=firewoes.git"

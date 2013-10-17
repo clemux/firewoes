@@ -18,21 +18,19 @@
 #   USA
 
 
-from sqlalchemy import Table, MetaData, Column, \
-    ForeignKey, Integer, String, Float, ForeignKeyConstraint, \
-    event, DDL, Index
+from sqlalchemy import Table, MetaData, Column,ForeignKey, Integer, \
+    String, Float, Index
 from sqlalchemy.orm import mapper, relationship, polymorphic_union, \
     sessionmaker, column_property
-from sqlalchemy.schema import Sequence
-
-metadata = MetaData()
 
 from firehose.model import Analysis, Result, Issue, Failure, Info, Metadata, \
     Generator, Sut, SourceRpm, DebianBinary, DebianSource, Stats, Message,  \
     Notes, Trace, State, Location, File, Hash, Function, Point, Range, \
     CustomFields
 
-# imported from firehose-orm/orm.py:
+# partially imported from firehose-orm/orm.py:
+
+metadata = MetaData()
 
 ############################################################################
 # Tables

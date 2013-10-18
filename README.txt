@@ -26,7 +26,7 @@ Debian dependencies
 Python packages
 ---------------
 
-(everythng is packaged in Debian for now)
+(everything is packaged in Debian for now)
 
 Installation
 ============
@@ -40,5 +40,12 @@ Ruuning
 =======
 
 * With the development Flask server:
-  $ export FIREWOES_CONFIG=path/to/yout/local/config.py
+  $ export FIREWOES_CONFIG=path/to/your/local/config.py
   $ python firewoes/web/run.py
+
+Testing
+=======
+
+$ export FIREWOES_CONFIG=path/to/testing_config.py
+$ python tests/tests.py
+

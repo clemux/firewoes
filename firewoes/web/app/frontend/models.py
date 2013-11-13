@@ -260,6 +260,9 @@ class Result_app(FHGeneric):
         menu = filters.Menu(args_without_page)
         query = menu.filter_sqla_query(query)
         
+        # we sort the results
+        query = query.order_by(Result.id)
+        
         # we get the page number and the offset
         try:  page = int(request_args["page"])
         except: page = 1

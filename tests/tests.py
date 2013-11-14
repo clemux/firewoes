@@ -8,7 +8,7 @@ testsdir = os.path.dirname(os.path.abspath(__file__))
 
 from firewoes.lib import orm
 from firewoes.bin import firewoes_fill_db
-from firewoes.web.app import app
+from firewoes.web.app import engine, session, app
 
 class FirewoesTestCase(unittest.TestCase):
     ClassIsSetup = False
@@ -26,12 +26,14 @@ class FirewoesTestCase(unittest.TestCase):
             self.__class__.ClassIsSetup = True
     
     def setupClass(self):
+        app.config["TESTING"] = True
         
         # we fill firewoes_test with our testing data:
-        print("Filling db...")
+        print("Filling db: %s" % app.config["DATABASE_URI"])
         xml_files = glob(testsdir + "/data/*.xml")
-        #firewoes_fill_db.read_and_create(app.config['DATABASE_URI'],
-        #                                 xml_files, drop=True, echo=False)
+        firewoes_fill_db.read_and_create(app.config['DATABASE_URI'],
+                                         xml_files, drop=True, echo=False,
+                                         engine=engine, session=session)
         
         # TODO: test pack_people_mapping with a short file
         
@@ -70,30 +72,8 @@ class FirewoesTestCase(unittest.TestCase):
         
     def test_search_list_root(self):
         rv = json.loads(self.app.get('/api/search/').data)
-        assert rv["results"][0] == {
-            "sut_buildarch": "x86_64", 
-            "location_function": "set_ringparam", 
-            "Point": {
-                "column": 1, 
-                "line": 881, 
-                "id": "b9a229d8cb6e8d80bbe64739c6d8e5287efc0ec6"
-                }, 
-            "message_text": "returning (PyObject*)NULL without setting an "
-                                                    "exception", 
-            "location_file": "python-ethtool/ethtool.c", 
-            "Range": None, 
-            "id": "e137be9fe3e6f9ab042f4cfd1e8074446b556fa7", 
-            "message_id": "eea211bacf3c996e3e8c0d3364384da5b299ba14", 
-            "sut_name": "python-ethtool", 
-            "testid": "returns-NULL-without-setting-exception", 
-            "generator_name": "cpychecker", 
-            "sut_release": "0.dc309d6b2781dc3810021d2e4e2d669f40227b63.fc17"
-                                                   ".src.rpm", 
-            "sut_type": "source-rpm", 
-            "result_type": "issue", 
-            "sut_version": "0.8", 
-            "generator_version": None
-            }
+        assert rv["results_all_count"] == 18
+        assert len(rv["results"]) == app.config["SEARCH_RESULTS_OFFSET"]
         
     def test_search_list_testid(self):
         rv = json.loads(self.app.get('/api/search/?generator_name=cpychecker'
@@ -134,7 +114,6 @@ class FirewoesTestCase(unittest.TestCase):
                                      '&location_file=python-ethtool%2Fethtool.c'
                                      ).data)
         assert rv["menu"][2]["active"] == True
-        assert rv["menu"][10]["items"][0]["value"] == "get_ufo"
         
     def test_reports(self):
         rv = json.loads(self.app.get('/api/report/python-ethtool/').data)

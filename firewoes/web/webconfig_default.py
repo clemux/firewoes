@@ -23,10 +23,10 @@ DEBUG = False
 CSRF_ENABLED = False
 
 # this sould be configured later, in a local configuration file
-DATABASE_URI = ""
+DATABASE_URI = "sqlite:///:memory:"
 
 # echoes SQLAlchemy requests in standard output
-SQLALCHEMY_ECHO = True
+SQLALCHEMY_ECHO = False
 
 # The css used for the main design
 CSS_FILE = "css/base-debian.css"

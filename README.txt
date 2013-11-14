@@ -46,6 +46,7 @@ Ruuning
 Testing
 =======
 
-$ export FIREWOES_CONFIG=path/to/testing_config.py
+Testing will use the default database uri, which is an sqlite in-memory db.
+
 $ python tests/tests.py
 

@@ -60,8 +60,10 @@ def insert_analysis(session, xml_file):
     session.merge(analysis)
     session.commit()
     
-def read_and_create(url, xml_files, drop=False, echo=False):
-    engine, session = get_engine_session(url, echo=echo)
+def read_and_create(url, xml_files, drop=False, echo=False,
+                    engine=None, session=None):
+    if not session:
+        engine, session = get_engine_session(url, echo=echo)
     
     if drop:
         metadata.drop_all(bind=engine) # cleans the table (for debugging)

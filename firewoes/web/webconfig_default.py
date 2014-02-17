@@ -46,7 +46,7 @@ DEBIAN_SOURCES_URL = "http://sources.debian.net/src/{package}/{version}-{release
 FEDORA_SOURCES_URL = "http://foo.bar"
 
 # the url pattern used for embedded source code
-DEBIAN_EMBEDDED_SOURCES_URL = "http://sources.debian.net/embedded/{package}/{version}-{release}/{path}?msg={message}&hl={lines_range}#L{anchor}"
+DEBIAN_EMBEDDED_SOURCES_URL = "http://sources.debian.net/embed/file/{package}/{version}-{release}/{path}?msg={message}&hl={lines_range}#L{anchor}"
 
 FEDORA_EMBEDDED_SOURCES_URL = "http://foo.bar"
 

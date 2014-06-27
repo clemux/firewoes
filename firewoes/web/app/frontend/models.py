@@ -252,7 +252,9 @@ class Result_app(FHGeneric):
                 Sut.buildarch.label("sut_buildarch"),
                 Generator.name.label("generator_name"),
                 Generator.version.label("generator_version"),
-                Result.testid.label("testid"))
+                Result.testid.label("testid"),
+                Result.analysis_id.label("analysis_id"),
+            )
             .outerjoin(Location, File, Function, Point, Analysis,
                        Metadata, Generator, Sut, Message)
             .outerjoin(Range, Location.range_id==Range.id)

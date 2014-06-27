@@ -1,4 +1,5 @@
 # Copyright (C) 2013  Matthieu Caneill <matthieu.caneill@gmail.com>
+# Copyright (C) 2014  Clement Schreiner <clement@mux.me>
 #
 # This file is part of Firewoes.
 #
@@ -424,7 +425,29 @@ class FilterByMaintainerPackages(Filter):
     
     def is_relevant(self, active_keys=None):
         return True
-    
+
+
+class FilterAnalysisId(FilterFirehoseAttribute):
+    _dependencies = []
+    _outerjoins = [
+        (Location, Result.location_id==Location.id),
+        (File, Location.file_id==File.id),
+        (Function, Location.function_id==Function.id),
+        (Analysis, Result.analysis_id == Analysis.id),
+        (Metadata, Analysis.metadata_id==Metadata.id),
+        (Sut, Metadata.sut_id==Sut.id),
+        (Generator, Metadata.generator_id==Generator.id),
+        ]
+    _cool_name = "Analysis id"
+
+    def get_clauses(self):
+        return [(Result.analysis_id == self.value)]
+
+    def get_items(self, session, clauses=None, max_items=None):
+        res = self.group_by(session, Result.analysis_id, self._outerjoins,
+                            clauses=clauses, max_items=max_items)
+        return to_dict(res)
+
 
 all_filters = [
     ("maintainer", FilterByMaintainerPackages),
@@ -439,6 +462,7 @@ all_filters = [
     ("location_file", FilterLocationFile),
     ("location_function", FilterLocationFunction),
     ("testid", FilterTestId),
+    ("analysis_id", FilterAnalysisId),
     ]
 
 

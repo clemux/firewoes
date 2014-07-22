@@ -21,12 +21,13 @@ def get_analysis(path):
 class Node(object):
     count = 0 # DEBUG
 
-    def __init__(self, obj, parent, attr_name, siblings):
+    def __init__(self, obj, parent, attr_name, siblings=None):
         self.obj = obj
         self.parent = parent
         self.attr_name = attr_name
         self.children = list()
-        self.siblings = None
+        if siblings is not None:
+            self.siblings = siblings
         self.children_filled = False
         Node.counter() # DEBUG
 
@@ -37,10 +38,10 @@ class Node(object):
     def fill_children(self):
         for (attr_name, attr) in hash.get_attrs(self.obj):
             if isinstance(attr, list):
-                self.children.append(ListNode(attr, self, attr_name))
+                self.children.append(ListNode(attr, self, attr_name, self.children))
             elif (type(attr) not in (int, float, str, _string_type)
                   and attr is not None):
-                self.children.append(Node(attr, self, attr_name))
+                self.children.append(Node(attr, self, attr_name, self.children))
         self.children_filled = True
 
     def save(self, session):
@@ -62,7 +63,7 @@ class Node(object):
 
 class ListNode(Node):
     def fill_children(self):
-        self.children = [Node(item, self, None) for item in self.obj]
+        self.children = [Node(item, self, None, self.children) for item in self.obj]
         self.children_filled = True
 
     def save(self, session):
@@ -78,7 +79,7 @@ class ListNode(Node):
         return '<ListNode: %s>' % self.attr_name
 
 def iterative_uniquify(session, obj):
-    current = Node(obj, None, None)
+    current = Node(obj, None, None, None)
 #    depth = 0 # DEBUG
     while True:
 #        print "%s (depth: %d)" % (current, depth) # DEBUG
@@ -100,7 +101,10 @@ def iterative_uniquify(session, obj):
 #                print('-- no child, processing current (depth: %d)' % depth) # DEBUG
                 current.parent.process_child(current, session)
 #                print('-- moving up') # DEBUG
-                current = current.parent
+                if len(current.siblings) > 0:
+                    current = current.siblings.pop()
+                else:
+                    current = current.parent
 
 #                depth -= 1 # DEBUG
 
@@ -116,7 +120,10 @@ def iterative_uniquify(session, obj):
         else:
 #            print("-- Object exists, moving up (depth: %d)" % depth) # DEBUG
             current.parent.process_child(current, session)
-            current = current.parent
+            if len(current.siblings) > 0:
+                current = current.siblings.pop()
+            else:
+                current = current.parent
 #            depth -= 1 # DEBUG
 
 def run():

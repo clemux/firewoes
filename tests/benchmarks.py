@@ -29,6 +29,8 @@ class Node(object):
         if siblings is not None:
             self.siblings = siblings
         self.children_filled = False
+        self.queried = False
+        self.in_db = False
         Node.counter() # DEBUG
 
     @staticmethod
@@ -52,10 +54,16 @@ class Node(object):
         setattr(self.obj, child.attr_name, child.obj)
 
     def query(self, session):
-        class_, id_ = self.obj.__class__, self.obj.id
-        res = (session.query(class_)
-               .filter(class_.id == id_).first())
-        return res
+        if not self.queried:
+            class_, id_ = self.obj.__class__, self.obj.id
+            res = (session.query(class_)
+                   .filter(class_.id == id_).first())
+            self.queried = True
+            self.in_db = res != None
+            return self.in_db
+        else:
+            return self.in_db
+
 
 
     def __repr__(self):
@@ -73,7 +81,7 @@ class ListNode(Node):
         pass
 
     def query(self, session):
-        return None
+        return False
 
     def __repr__(self):
         return '<ListNode: %s>' % self.attr_name
@@ -83,9 +91,9 @@ def iterative_uniquify(session, obj):
 #    depth = 0 # DEBUG
     while True:
 #        print "%s (depth: %d)" % (current, depth) # DEBUG
-        res = current.query(session)
+
         print Node.count
-        if not res:
+        if not current.query(session):
             if not current.children_filled:
                 current.fill_children()
 

@@ -7,6 +7,7 @@ from glob import glob
 testsdir = os.path.dirname(os.path.abspath(__file__))
 
 from firewoes.lib import orm
+from firewoes.lib.dbutils import get_engine_session
 from firewoes.bin import firewoes_fill_db
 from firewoes.web.app import app
 
@@ -26,12 +27,14 @@ class FirewoesTestCase(unittest.TestCase):
             self.__class__.ClassIsSetup = True
     
     def setupClass(self):
-        
         # we fill firewoes_test with our testing data:
         print("Filling db...")
         xml_files = glob(testsdir + "/data/*.xml")
-        #firewoes_fill_db.read_and_create(app.config['DATABASE_URI'],
-        #                                 xml_files, drop=True, echo=False)
+        firewoes_fill_db.read_and_create(app.config['DATABASE_URI'],
+                                         xml_files, drop=True, echo=False)
+
+        engine, self.session = get_engine_session(app.config['DATABASE_URI'],
+                                                  echo=False)
         
         # TODO: test pack_people_mapping with a short file
         
@@ -144,6 +147,10 @@ class FirewoesTestCase(unittest.TestCase):
             dict(count=0, name="gcc")
             ]
         assert rv["results"][0]["package"]["name"] == "python-ethtool"
+
+    def test_uniquify(self):
+        print('Lol')
+        assert True == False
 
 if __name__ == '__main__':
     unittest.main()

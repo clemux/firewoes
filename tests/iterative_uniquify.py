@@ -17,10 +17,6 @@ class Node(object):
         self.in_db = False
         Node.counter() # DEBUG
 
-    @property
-    def key(self):
-        return (self.obj.__class__, self.obj.id)
-
     @staticmethod
     def counter(): # DEBUG
         Node.count += 1
@@ -34,24 +30,24 @@ class Node(object):
                 self.children.append(Node(attr, self, attr_name, self.children))
         self.children_filled = True
 
-    def save(self, session, cache):
+    def save(self, session, save=True):
 #        q = session.query(self.obj.__class__).filter(self.obj.__class__.id == self.obj.id)
 #        if q.count() > 0:
 #            print("----- Saving element already in DB")
         if len(self.obj.__class__.id.info) > 0:
             print(self.obj.__class__.id.info)
 
-        cache[self.key] = self.obj#
-        session.add(self.obj)
-
-    def process_child(self, child, session, cache, save=True):
         if save:
-            child.save(session, cache)
+            session.add(self.obj)
+
+    def process_child(self, child, session, save=True):
+        child.save(session)
 
         setattr(self.obj, child.attr_name, child.obj)
 
     def query(self, session):
-        if not self.queried:
+        # if not self.queried:
+        if True:
             class_, id_ = self.obj.__class__, self.obj.id
             res = (session.query(class_)
                    .filter(class_.id == id_).first())
@@ -66,15 +62,16 @@ class Node(object):
     def __repr__(self):
         return '<Node: %s/%s>' % (self.obj.__class__, self.obj.id)
 
+
 class ListNode(Node):
     def fill_children(self):
         self.children = [Node(item, self, None, self.children) for item in self.obj]
         self.children_filled = True
 
-    def save(self, session, cache):
+    def save(self, session):
         pass
 
-    def process_child(self, child, session, cache):
+    def process_child(self, child, session):
         pass
 
     def query(self, session):
@@ -83,19 +80,15 @@ class ListNode(Node):
     def __repr__(self):
         return '<ListNode: %s>' % self.attr_name
 
-    @property
-    def key(self):
-        return None
 
 def uniquify(session, obj):
     current = Node(obj, None, None, None)
-    cache = dict()
 #    depth = 0 # DEBUG
 
     while True:
 ##        print "%s (depth: %d)" % (current, depth) # DEBUG
 
-        if not current.query(session) and not current.key in cache:
+        if not current.query(session) and not current.obj in session.new:
             if not current.children_filled:
                 current.fill_children()
 
@@ -108,7 +101,7 @@ def uniquify(session, obj):
 
             elif current.parent is not None:
 #                print('-- no child, processing current (depth: %d)' % depth) # DEBUG
-                current.parent.process_child(current, session, cache)
+                current.parent.process_child(current, session)
 #                print('-- moving up') # DEBUG
                 if len(current.siblings) > 0:
                     current = current.siblings.pop()
@@ -128,7 +121,7 @@ def uniquify(session, obj):
 
         else:
 #            print("-- Object exists, moving up (depth: %d)" % depth) # DEBUG
-            current.parent.process_child(current, session, cache, False)
+            current.parent.process_child(current, session, False)
             if len(current.siblings) > 0:
                 current = current.siblings.pop()
             else:

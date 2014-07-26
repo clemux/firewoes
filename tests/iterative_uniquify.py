@@ -15,7 +15,7 @@ class Node(object):
         self.children_filled = False
         self.queried = False
         self.in_db = False
-        Node.counter() # DEBUG
+        self.counter() # DEBUG
 
     @staticmethod
     def counter(): # DEBUG
@@ -77,6 +77,10 @@ class ListNode(Node):
     def query(self, session):
         return False
 
+    @staticmethod
+    def counter():
+        pass
+
     def __repr__(self):
         return '<ListNode: %s>' % self.attr_name
 
@@ -87,7 +91,7 @@ def uniquify(session, obj):
 
     while True:
 ##        print "%s (depth: %d)" % (current, depth) # DEBUG
-
+#        print("%d/%d" % (len(session.new), Node.count))
         if not current.query(session) and not current.obj in session.new:
             if not current.children_filled:
                 current.fill_children()

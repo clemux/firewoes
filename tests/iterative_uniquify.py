@@ -39,6 +39,7 @@ class Node(object):
 
         if save:
             session.add(self.obj)
+            session._unique_cache[self.key] = self.obj
 
     def process_child(self, child, session, save=True):
         child.save(session)
@@ -46,8 +47,7 @@ class Node(object):
         setattr(self.obj, child.attr_name, child.obj)
 
     def query(self, session):
-        # if not self.queried:
-        if True:
+        if not self.queried:
             class_, id_ = self.obj.__class__, self.obj.id
             res = (session.query(class_)
                    .filter(class_.id == id_).first())
@@ -58,6 +58,10 @@ class Node(object):
             return self.in_db
         else:
             return self.in_db
+
+    @property
+    def key(self):
+        return self.obj.__class__, self.obj.id
 
     def __repr__(self):
         return '<Node: %s/%s>' % (self.obj.__class__, self.obj.id)
@@ -77,6 +81,10 @@ class ListNode(Node):
     def query(self, session):
         return False
 
+    @property
+    def key(self):
+        return None
+
     @staticmethod
     def counter():
         pass
@@ -89,10 +97,20 @@ def uniquify(session, obj):
     current = Node(obj, None, None, None)
 #    depth = 0 # DEBUG
 
+    cache = getattr(session, '_unique_cache', None)
+    if cache is None:
+        session._unique_cache = cache = {}
+
     while True:
 ##        print "%s (depth: %d)" % (current, depth) # DEBUG
 #        print("%d/%d" % (len(session.new), Node.count))
-        if not current.query(session) and not current.obj in session.new:
+
+
+        if cache.get(current.key, None) is not None:
+            print('EXTERMINATE')
+
+        if (cache.get(current.key, None) is not None
+            and not current.query(session)):
             if not current.children_filled:
                 current.fill_children()
 

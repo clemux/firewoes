@@ -22,6 +22,7 @@ class Node(object):
         Node.count += 1
 
     def fill_children(self):
+        # from original implementation
         for (attr_name, attr) in hash.get_attrs(self.obj):
             if isinstance(attr, list):
                 self.children.append(ListNode(attr, self, attr_name, self.children))
@@ -31,9 +32,8 @@ class Node(object):
         self.children_filled = True
 
     def save(self, session, save=True):
-#        q = session.query(self.obj.__class__).filter(self.obj.__class__.id == self.obj.id)
-#        if q.count() > 0:
-#            print("----- Saving element already in DB")
+        if self.key in session._unique_cache: # DEBUG
+            print('Saving object already in cache') # DEBUG
         session.add(self.obj)
         session._unique_cache[self.key] = self.obj
 
@@ -99,13 +99,15 @@ def uniquify(session, obj):
 
     while True:
 #        print "%s (depth: %d)" % (current, depth) # DEBUG
-        print("%d/%d" % (len(session.new), Node.count))
+        print("%d session/%d cache/%d total" % (len(session.new), len(cache), Node.count))
 
+        if current.query(session): # DEBUG
+            print('!!! Object in DB !!!') # DEBUG
 
-        if cache.get(current.key, None):
-            print('Object in cache.')
+#        if cache.get(current.key, None): # DEBUG
+#            print('Object in cache.')    # DEBUG
 
-        if (cache.get(current.key, None) is None and not current.query(session)):
+        if (cache.get(current.key, None) is None): # and not current.query(session)):
             if not current.children_filled:
                 current.fill_children()
 
@@ -139,7 +141,7 @@ def uniquify(session, obj):
         else:
 #            print("-- Object exists, moving up (depth: %d)" % depth) # DEBUG
             current.obj = cache[current.key]
-            current.parent.process_child(current, session)
+            current.parent.process_child(current, session, False)
             if len(current.siblings) > 0:
                 current = current.siblings.pop()
             else:

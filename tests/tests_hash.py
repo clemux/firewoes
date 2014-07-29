@@ -60,11 +60,11 @@ class FirewoesHashTestCase(unittest.TestCase):
         f = self.firehoses[4]
 
         print('Running iterative uniquify')
-        with self.session2.no_autoflush:
-            u = iterative_uniquify(self.session2, f)
+        with self.session.no_autoflush:
+            u = iterative_uniquify(self.session, f)
 
-        self.session2.merge(u)
-        self.session2.commit()
+        self.session.merge(u)
+        self.session.commit()
 
 #        print('Running recursive uniquify')
 #        u_r = hash.uniquify(self.session, f)

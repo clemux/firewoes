@@ -34,16 +34,12 @@ class Node(object):
 #        q = session.query(self.obj.__class__).filter(self.obj.__class__.id == self.obj.id)
 #        if q.count() > 0:
 #            print("----- Saving element already in DB")
-        if len(self.obj.__class__.id.info) > 0:
-            print(self.obj.__class__.id.info)
-
-        if save:
-            session.add(self.obj)
-            session._unique_cache[self.key] = self.obj
+        session.add(self.obj)
+        session._unique_cache[self.key] = self.obj
 
     def process_child(self, child, session, save=True):
-        child.save(session)
-
+        if save:
+            child.save(session)
         setattr(self.obj, child.attr_name, child.obj)
 
     def query(self, session):
@@ -102,15 +98,14 @@ def uniquify(session, obj):
         session._unique_cache = cache = {}
 
     while True:
-##        print "%s (depth: %d)" % (current, depth) # DEBUG
-#        print("%d/%d" % (len(session.new), Node.count))
+#        print "%s (depth: %d)" % (current, depth) # DEBUG
+        print("%d/%d" % (len(session.new), Node.count))
 
 
-        if cache.get(current.key, None) is not None:
-            print('EXTERMINATE')
+        if cache.get(current.key, None):
+            print('Object in cache.')
 
-        if (cache.get(current.key, None) is not None
-            and not current.query(session)):
+        if (cache.get(current.key, None) is None and not current.query(session)):
             if not current.children_filled:
                 current.fill_children()
 
@@ -143,7 +138,8 @@ def uniquify(session, obj):
 
         else:
 #            print("-- Object exists, moving up (depth: %d)" % depth) # DEBUG
-            current.parent.process_child(current, session, False)
+            current.obj = cache[current.key]
+            current.parent.process_child(current, session)
             if len(current.siblings) > 0:
                 current = current.siblings.pop()
             else:

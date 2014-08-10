@@ -1,5 +1,6 @@
 *.pyc
 cache/*
+config/webconfig.local.py
 dist
 firewoes.egg-info
 build

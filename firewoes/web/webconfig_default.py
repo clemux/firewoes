@@ -23,10 +23,10 @@ DEBUG = False
 CSRF_ENABLED = False
 
 # this sould be configured later, in a local configuration file
-DATABASE_URI = ""
+DATABASE_URI = "sqlite:///:memory:"
 
 # echoes SQLAlchemy requests in standard output
-SQLALCHEMY_ECHO = True
+SQLALCHEMY_ECHO = False
 
 # The css used for the main design
 CSS_FILE = "css/base-debian.css"
@@ -46,7 +46,7 @@ DEBIAN_SOURCES_URL = "http://sources.debian.net/src/{package}/{version}-{release
 FEDORA_SOURCES_URL = "http://foo.bar"
 
 # the url pattern used for embedded source code
-DEBIAN_EMBEDDED_SOURCES_URL = "http://sources.debian.net/embedded/{package}/{version}-{release}/{path}?msg={message}&hl={lines_range}#L{anchor}"
+DEBIAN_EMBEDDED_SOURCES_URL = "http://sources.debian.net/embed/file/{package}/{version}-{release}/{path}?msg={message}&hl={lines_range}#L{anchor}"
 
 FEDORA_EMBEDDED_SOURCES_URL = "http://foo.bar"
 

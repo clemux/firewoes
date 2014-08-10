@@ -1,7 +1,20 @@
 from firewoes.lib import hash
-from firehose.model import _string_type
+from firehose.model import (_string_type, Message, Notes, Point,
+                            CustomFields, File, Function, Generator,
+                            Hash, Location, Sut, DebianSource, DebianBinary,
+                            SourceRpm, Stats, Range,
+                            Metadata, Trace, Analysis, State,
+                            Issue, Failure, Info)
 
-# import pprint # DEBUG
+from firewoes.lib.orm import (t_message, t_notes, t_point, t_customfields,
+                              t_file, t_function, t_generator, t_hash,
+                              t_location, t_sut, t_stats, t_range,
+                              t_metadata, t_trace, t_analysis,
+                              t_state, t_result)
+
+from sqlalchemy import select, exists, literal
+
+from collections import defaultdict
 
 
 
@@ -13,9 +26,7 @@ from firehose.model import _string_type
 # TODO: use a lighter data structure
 
 
-
 class Node(object):
-    count = 0 # DEBUG
 
     def __init__(self, obj, parent, attr_name, siblings=None):
         """
@@ -33,13 +44,7 @@ class Node(object):
         if siblings is not None:
             self.siblings = siblings
         self.children_filled = False
-        self.queried = False
-        self.in_db = False
-        self.counter() # DEBUG
 
-    @staticmethod
-    def counter(): # DEBUG
-        Node.count += 1
 
     def fill_children(self):
         # from original implementation
@@ -48,43 +53,15 @@ class Node(object):
                 self.children.append(ListNode(attr, self, attr_name, self.children))
             elif (type(attr) not in (int, float, str, _string_type)
                   and attr is not None):
-                self.children.append(Node(attr, self, attr_name, self.children))
+                node = Node(attr, self, attr_name, self.children)
+                node.set_fk()
+                self.children.append(node)
+
         self.children_filled = True
 
-    def save(self, session):
-        """
-        Adds the current object in the session and in the cache
-        """
-        if self.key in session._unique_cache: # DEBUG
-            print('Saving object already in cache') # DEBUG
-        session.add(self.obj)
-        session._unique_cache[self.key] = self.obj
-
-    def process_child(self, child):
-        """
-        Update an attribute with the given child's firehose object.
-
-        Done in the node's parent instead of itself,
-        because ListNode's children are not attributes.
-        """
-        setattr(self.obj, child.attr_name, child.obj)
-
-    def query(self, session):
-        """
-        If the object is not in the DB, it won't be in the DB
-        later, since we disable session autoflush.
-        """
-        if not self.queried:
-            class_, id_ = self.obj.__class__, self.obj.id
-            res = (session.query(class_)
-                   .filter(class_.id == id_).first())
-            self.queried = True
-            if res is not None:
-                self.obj = res # let's use the object already in the DB
-                self.in_db = True
-            return self.in_db
-        else:
-            return self.in_db
+    def set_fk(self):
+        attr_name = self.obj.__class__.__name__.lower() + '_id'
+        setattr(self.parent.obj, attr_name, self.obj.id)
 
     @property
     def key(self):
@@ -102,106 +79,184 @@ class ListNode(Node):
     """
 
     def fill_children(self):
-        self.children = [Node(item, self, None, self.children) for item in self.obj]
+        self.children = list()
+        for item in self.obj:
+            node = Node(item, self, None, self.children)
+            self.set_fk(node)
+            self.children.append(node)
         self.children_filled = True
 
-    def save(self, session):
-        """
-        I'm not an actual firehose objet, so I can't be
-        added to the session or the cache.
-        """
+    def set_fk(self, node):
+        attr_name = self.parent.obj.__class__.__name__.lower() + '_id'
+        setattr(node.obj, attr_name, self.parent.obj.id)
 
-    def process_child(self, child):
-        """
-        I'm a not an actual firehose objet, so there's nothing to do here.
-        """
-        pass
-
-    def query(self, session):
-        """
-        I can't be in the DB, since I don't exist.
-        """
-        return False
 
     @property
     def key(self):
         """ I'm not a firehose element, so I have no key """
         return None
 
-    @staticmethod
-    def counter():
-        # DEBUG
-        pass
-
     def __repr__(self):
         return '<ListNode: %s>' % self.attr_name
 
-
-def uniquify(session, obj):
+def uniquify(engine, obj):
     # root node (`Analysis` object)
     # so no parent, and no attribute name, and no siblings
     current = Node(obj, None, None, None)
-#    depth = 0 # DEBUG
+    depth = 0 # DEBUG
 
-    session._unique_cache = cache = {}
+    data = defaultdict(set)
+
 
     while True:
-#        print "%s (depth: %d)" % (current, depth) # DEBUG
+        if not current.children_filled:
+            current.fill_children()
 
-        # DEBUG
-        print("%d session/%d cache/%d total" % (len(session.new),
-                                                len(cache), Node.count))
+        # (1) if children, go back to (1) with first child
+        # (2) process self
+        # (3) if siblings, go back to (1) with first sibling
 
-        if current.query(session): # DEBUG
-            # This should not happen with a pristine DB,
-            # and will make the check below fail
-            # (see FIXME comment below).
-            print('!!! Object in DB !!!') # DEBUG
+        if len(current.children) > 0:
+            current = current.children.pop()
+            depth += 1 # DEBUG
 
-
-#        if (cache.get(current.key, None) is None) and not current.query(session)):
-        # FIXME: add the query check again (useless for now, since the DB is empty)
-        if (cache.get(current.key, None) is None):
-            if not current.children_filled:
-                current.fill_children()
-
-#            print "children (%d):" % len(current.children) # DEBUG
-
-            # (1) if children, go back to (1) with first child
-            # (2) process self
-            # (3) if siblings, go back to (1) with first sibling
-
-            if len(current.children) > 0:
-#                pprint.pprint(current.children) # DEBUG
-                current = current.children.pop()
-#                depth += 1 # DEBUG
-
-            elif current.parent is not None:
-#                print('-- no child, processing current (depth: %d)' % depth) # DEBUG
-                current.parent.process_child(current)
-                current.save(session)
-#                print('-- moving up') # DEBUG
-                if len(current.siblings) > 0:
-                    current = current.siblings.pop()
-                else:
-                    current = current.parent
-#                    depth -= 1 # DEBUG
-
-            else:
-                session.add(current.obj)
-                print(' **** Tree processed, returning.') # DEBUG
-                return current.obj
-
-        elif current.parent == None:
-#            print(' **** Object exists, returning.') # DEBUG
-            return current.obj
-
-        else:
-#            print("-- Object exists, moving up (depth: %d)" % depth) # DEBUG
-            current.obj = cache[current.key]
-            current.parent.process_child(current)
+        elif current.parent is not None:
+            if current.key is not None:
+                klass, hash = current.key
+                data[klass].add(current.obj)
             if len(current.siblings) > 0:
                 current = current.siblings.pop()
             else:
                 current = current.parent
-#            depth -= 1 # DEBUG
+                depth -= 1 # DEBUG
+
+        else:
+            klass, hash = current.key
+            data[klass].add(current.obj)
+            break
+
+    objects = [Notes, Point, CustomFields, Hash, File, Function,
+               Generator, Location, Sut, Stats, Range, Metadata, Trace,
+               Location, Message, Analysis, State]
+    # TODO: find pertinent name
+    # TODO: returns functions that creates the SQL queries instead
+    #       this would allow easier factorization of specific rules
+    #       for tables holding different firehose objects with a
+    #       'type' field
+    # attr_type => ([columns], table)
+    rules = {
+        Notes: (['id', 'text'], t_notes),
+        Point: (['id', 'line', 'column'], t_point),
+        CustomFields: (['id'], t_customfields),
+        Hash: (['id', 'alg', 'hexdigest'], t_hash),
+        File: (['id', 'givenpath', 'abspath', 'hash_id'], t_file),
+        Function: (['id', 'name'], t_function),
+        Generator: (['id', 'name', 'version'], t_generator),
+        Sut: (['id', 'type', 'name', 'version', 'release', 'buildarch'], t_sut),
+        Stats: (['id', 'wallclocktime'], t_stats),
+        Range: (['id', 'start_id', 'end_id'], t_range),
+        Metadata: (['id', 'generator_id', 'sut_id', 'file_id', 'stats_id'],
+                   t_metadata),
+        Trace: (['id'], t_trace),
+        Location: (['id', 'file_id', 'function_id', 'point_id', 'range_id'],
+                   t_location),
+        Message: (['id', 'text'], t_message),
+        Analysis: (['id', 'metadata_id', 'customfields_id'], t_analysis),
+        State: (['id', 'trace_id', 'location_id', 'notes_id'], t_state),
+        }
+
+    result_base_columns = ['analysis_id', 'location_id', 'message_id',
+                           'customfields_id']
+    result_columns = {
+        Issue: result_base_columns + ['notes_id', 'trace_id', 'testid', 'severity'],
+        Failure: result_base_columns,
+        Info: result_base_columns,
+    }
+
+    conn = engine.connect()
+    trans = conn.begin()
+
+    # TODO: this does not work, which forces us to fill tables in a specific
+    #       order, and thus to take time filling the `data` dictionary,
+    #       instead of directly executing the SQL queries
+    #       * this might or might be relevant for real-word performance
+    conn.execute("set constraints all deferred;")
+
+    for attr_cls in objects:
+        attrs, table = rules[attr_cls]
+        for i in data[attr_cls]:
+            # from http://stackoverflow.com/a/18605162/1200503
+            literals = [literal(getattr(i, attr)) for attr in attrs]
+            sel = select(literals).where(
+                ~exists([table.c.id]).where(table.c.id == i.id)
+            )
+            ins = table.insert().from_select(attrs, sel)
+            conn.execute(ins)
+
+    for issue in data[Issue]:
+        literals = [literal(getattr(issue, 'id')), literal('issue')]
+        literals.extend([literal(getattr(issue, attr)) for attr in result_columns[Issue]])
+        attrs = ['id', 'type'] + result_columns[Issue]
+        sel = select(literals).where(
+            ~exists([t_result.c.id]).where(t_result.c.id == i.id)
+        )
+        ins = t_result.insert().from_select(attrs, sel)
+        conn.execute(ins)
+
+    for issue in data[Info]:
+        literals = [literal(getattr(issue, 'id')), literal('info')]
+        literals.extend([literal(getattr(issue, attr)) for attr in result_columns[Info]])
+        attrs = ['id', 'type'] + result_columns[Info]
+        sel = select(literals).where(
+            ~exists([t_result.c.id]).where(t_result.c.id == i.id)
+        )
+        ins = t_result.insert().from_select(attrs, sel)
+        conn.execute(ins)
+
+    for issue in data[Failure]:
+        literals = [literal(getattr(issue, 'id')), literal('failure')]
+        literals.extend([literal(getattr(issue, attr)) for attr in result_columns[Failure]])
+        attrs = ['id', 'type'] + result_columns[Failure]
+        sel = select(literals).where(
+            ~exists([t_result.c.id]).where(t_result.c.id == i.id)
+        )
+        ins = t_result.insert().from_select(attrs, sel)
+        conn.execute(ins)
+
+    sut_columns = ['name', 'version', 'release', 'buildarch']
+    for sut in data[DebianSource]:
+        attrs = ['id', 'type'] + sut_columns
+        literals = [literal(getattr(sut, 'id')), literal('debian-source')]
+        literals.extend([literal(getattr(sut, attr)) for attr in sut_columns])
+        sel = select(literals).where(
+            ~exists([t_sut.c.id]).where(t_sut.c.id == i.id)
+        )
+        ins = t_sut.insert().from_select(attrs, sel)
+        conn.execute(ins)
+
+
+    for sut in data[DebianBinary]:
+        attrs = ['id', 'type'] + sut_columns
+        literals = [literal(getattr(sut, 'id')), literal('debian-binary')]
+        literals.extend([literal(getattr(sut, attr)) for attr in sut_columns])
+        sel = select(literals).where(
+            ~exists([t_sut.c.id]).where(t_sut.c.id == i.id)
+        )
+        ins = t_sut.insert().from_select(attrs, sel)
+        conn.execute(ins)
+
+    for sut in data[SourceRpm]:
+        attrs = ['id', 'type'] + sut_columns
+        literals = [literal(getattr(sut, 'id')), literal('source-rpm')]
+        literals.extend([literal(getattr(sut, attr)) for attr in sut_columns])
+        sel = select(literals).where(
+            ~exists([t_sut.c.id]).where(t_sut.c.id == i.id)
+        )
+        ins = t_sut.insert().from_select(attrs, sel)
+        conn.execute(ins)
+
+    trans.commit()
+    conn.close()
+
+    return current.obj
+

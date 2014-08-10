@@ -20,7 +20,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
 
 def _get_engine(url, echo):
-    return create_engine(url, echo=echo)
+    return create_engine(url, echo=echo, implicit_returning=False)
 
 def get_engine_session(url, echo=False):
     """

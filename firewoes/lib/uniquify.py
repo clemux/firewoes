@@ -78,7 +78,7 @@ class Node(object):
         self.children_filled = True
 
     def set_fk(self):
-        attr_name = self.obj.__class__.__name__.lower() + '_id'
+        attr_name = self.attr_name + '_id'
         setattr(self.parent.obj, attr_name, self.obj.id)
 
     @property

@@ -154,7 +154,7 @@ def uniquify(engine, obj):
             break
 
     objects = [Notes, Point, CustomFields, Hash, File, Function,
-               Generator, Location, Sut, Stats, Range, Metadata, Trace,
+               Generator, Range, Sut, Stats, Location, Metadata, Trace,
                Location, Message, Analysis, State]
     # TODO: find pertinent name
     # TODO: returns functions that creates the SQL queries instead

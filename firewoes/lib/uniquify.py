@@ -200,6 +200,37 @@ def uniquify(engine, obj):
     #       * this might or might be relevant for real-word performance
     conn.execute("set constraints all deferred;")
 
+    sut_columns = ['name', 'version', 'release', 'buildarch']
+    for sut in data[DebianSource]:
+        attrs = ['id', 'type'] + sut_columns
+        literals = [literal(getattr(sut, 'id')), literal('debian-source')]
+        literals.extend([literal(getattr(sut, attr)) for attr in sut_columns])
+        sel = select(literals).where(
+            ~exists([t_sut.c.id]).where(t_sut.c.id == sut.id)
+        )
+        ins = t_sut.insert().from_select(attrs, sel)
+        conn.execute(ins)
+
+    for sut in data[DebianBinary]:
+        attrs = ['id', 'type'] + sut_columns
+        literals = [literal(getattr(sut, 'id')), literal('debian-binary')]
+        literals.extend([literal(getattr(sut, attr)) for attr in sut_columns])
+        sel = select(literals).where(
+            ~exists([t_sut.c.id]).where(t_sut.c.id == sut.id)
+        )
+        ins = t_sut.insert().from_select(attrs, sel)
+        conn.execute(ins)
+
+    for sut in data[SourceRpm]:
+        attrs = ['id', 'type'] + sut_columns
+        literals = [literal(getattr(sut, 'id')), literal('source-rpm')]
+        literals.extend([literal(getattr(sut, attr)) for attr in sut_columns])
+        sel = select(literals).where(
+            ~exists([t_sut.c.id]).where(t_sut.c.id == sut.id)
+        )
+        ins = t_sut.insert().from_select(attrs, sel)
+        conn.execute(ins)
+
     for attr_cls in objects:
         attrs, table = rules[attr_cls]
         for i in data[attr_cls]:
@@ -239,38 +270,6 @@ def uniquify(engine, obj):
             ~exists([t_result.c.id]).where(t_result.c.id == i.id)
         )
         ins = t_result.insert().from_select(attrs, sel)
-        conn.execute(ins)
-
-    sut_columns = ['name', 'version', 'release', 'buildarch']
-    for sut in data[DebianSource]:
-        attrs = ['id', 'type'] + sut_columns
-        literals = [literal(getattr(sut, 'id')), literal('debian-source')]
-        literals.extend([literal(getattr(sut, attr)) for attr in sut_columns])
-        sel = select(literals).where(
-            ~exists([t_sut.c.id]).where(t_sut.c.id == i.id)
-        )
-        ins = t_sut.insert().from_select(attrs, sel)
-        conn.execute(ins)
-
-
-    for sut in data[DebianBinary]:
-        attrs = ['id', 'type'] + sut_columns
-        literals = [literal(getattr(sut, 'id')), literal('debian-binary')]
-        literals.extend([literal(getattr(sut, attr)) for attr in sut_columns])
-        sel = select(literals).where(
-            ~exists([t_sut.c.id]).where(t_sut.c.id == i.id)
-        )
-        ins = t_sut.insert().from_select(attrs, sel)
-        conn.execute(ins)
-
-    for sut in data[SourceRpm]:
-        attrs = ['id', 'type'] + sut_columns
-        literals = [literal(getattr(sut, 'id')), literal('source-rpm')]
-        literals.extend([literal(getattr(sut, attr)) for attr in sut_columns])
-        sel = select(literals).where(
-            ~exists([t_sut.c.id]).where(t_sut.c.id == i.id)
-        )
-        ins = t_sut.insert().from_select(attrs, sel)
         conn.execute(ins)
 
     trans.commit()
